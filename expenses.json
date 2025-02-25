@@ -46,5 +46,59 @@
         "category": "Food",
         "description": "Sushi",
         "date": "2025-02-24 22:01:29"
+    },
+    {
+        "amount": 12.0,
+        "category_id": 3,
+        "description": "Cinema",
+        "date": "2025-02-25 12:57:49"
+    },
+    {
+        "amount": 78.0,
+        "category_id": 1,
+        "description": "Mercadona",
+        "date": "2025-02-25 13:02:41"
+    },
+    {
+        "amount": 45.0,
+        "category_id": 4,
+        "description": "Brandy melville",
+        "date": "2025-02-25 13:24:44"
+    },
+    {
+        "amount": 23.0,
+        "category_id": 3,
+        "description": "Cinema",
+        "date": "2025-02-25 13:28:54"
+    },
+    {
+        "amount": 23.0,
+        "category_id": 5,
+        "description": "Debts",
+        "date": "2025-02-25 13:30:29"
+    },
+    {
+        "amount": 12.0,
+        "category_id": 3,
+        "description": "Tickets for hockey game",
+        "date": "2025-02-25 13:48:32"
+    },
+    {
+        "amount": 3.0,
+        "category_id": 4,
+        "description": "Fees of bank for zara change",
+        "date": "2025-02-25 15:30:58"
+    },
+    {
+        "amount": 24.0,
+        "category_id": 1,
+        "description": "Mercadona but paid my part and not roomates part",
+        "date": "2025-02-25 15:11:43"
+    },
+    {
+        "amount": 12.0,
+        "category_id": 1,
+        "description": "Cafeteria school food",
+        "date": "2025-02-25 15:30:05"
     }
 ]
