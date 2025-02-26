@@ -4,6 +4,68 @@ import datetime
 # File paths
 EXPENSE_FILE = "expenses.json"
 CATEGORIES_FILE = "categories.json"
+BALANCE_FILE = "balance.json"
+
+
+# Load balance from file
+def load_balance():
+    """
+    Load the user's balance from a file.
+
+    This function attempts to read the balance from a JSON file. If the file does not exist
+    or contains invalid data, it prompts the user to set an initial balance.
+
+    Returns:
+        float: The current balance stored in the file, or a new balance set by the user.
+    """
+    try:
+        with open(BALANCE_FILE, "r") as file:
+            return json.load(file).get("balance", 0)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return set_initial_balance()
+
+
+# Save balance to file
+def save_balance(balance):
+    """
+    Save the user's balance to a file.
+
+    This function writes the balance to a JSON file, ensuring that the latest balance
+    is stored persistently.
+
+    Args:
+        balance (float): The balance amount to save.
+    """
+    try:
+        with open(BALANCE_FILE, "w") as file:
+            json.dump({"balance": balance}, file, indent=4)
+    except Exception as e:
+        print(f"Error saving balance: {e}")
+
+
+# Set initial balance
+def set_initial_balance():
+    """
+    Prompt the user to enter an initial balance and validate the input.
+
+    This function ensures that the user enters a non-negative numeric value for the initial balance.
+    If the input is invalid (e.g., a negative number or non-numeric input), it prompts the user to try again.
+    Once a valid balance is provided, it saves the balance to a file and returns it.
+
+    Returns:
+        float: The initial balance set by the user.
+    """
+    while True:
+        try:
+            balance = float(input("Enter your initial balance: "))
+            if balance < 0:
+                print("Balance cannot be negative. Try again.")
+                continue
+            save_balance(balance)
+            return balance
+        except ValueError:
+            print("Invalid input! Please enter a valid number.")
+
 
 # Load expenses from file
 def load_expenses():
@@ -138,32 +200,94 @@ def get_valid_category_id(categories):
 
 
 # Add a new expense
-def add_expense(expenses, categories):
+def add_expense(expenses, categories, balance):
     """
-    Add a new expense to the list.
+    Add a new expense entry to the budget tracker.
+
+    This function prompts the user to enter an expense amount, validates it, and ensures
+    that the balance is sufficient. The user selects a category, enters a description, and
+    the expense is recorded with a timestamp. The balance is updated and saved.
 
     Args:
-        expenses (list): The list of expenses.
+        expenses (list): The list of recorded expenses.
         categories (list): The list of available categories.
+        balance (float): The user's current balance.
+
+    Returns:
+        float: The updated balance after deducting the expense.
     """
-    amount = get_valid_amount("Please enter expense amount: ")
-    display_categories(categories)
-    category_id = get_valid_category_id(categories)
-    description = get_valid_string("Please enter description: ")
-    date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    while True:
+        amount = get_valid_amount("Enter expense amount: ")
+        if amount > balance:
+            print("Insufficient balance! Reduce the amount or add more funds.")
+            return balance
 
-    expenses.append({"amount": amount, "category_id": category_id, "description": description, "date": date})
-    save_expenses(expenses)
-    print("Expense added successfully!")
+        display_categories(categories)
+        category_id = get_valid_category_id(categories)
+        description = get_valid_string("Enter description: ")
+        date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        expenses.append({"amount": -amount, "category_id": category_id, "description": description, "date": date})
+        save_expenses(expenses)
+        balance -= amount
+        save_balance(balance)
+
+        print(f"Expense added! Remaining balance: ${balance:.2f}")
+
+        continue_using = input("Do you want to continue using the budget tracker? (yes/no): ").strip().lower()
+        if continue_using == "no":
+            print("Goodbye!")
+            exit()
+
+        return balance
 
 
-# View all expenses
+# Add funds to the budget
+def add_funds(expenses, balance):
+    """
+    Add funds to the budget tracker.
+
+    This function prompts the user to enter an amount to add to their balance.
+    The user also enters a description (e.g., salary, gift, etc.), and the transaction
+    is recorded with a timestamp. The balance is updated and saved.
+
+    Args:
+        expenses (list): The list of recorded transactions.
+        balance (float): The user's current balance.
+
+    Returns:
+        float: The updated balance after adding funds.
+    """
+    while True:
+        amount = get_valid_amount("Enter the amount you want to add: ")
+        description = get_valid_string("Enter the source of income (e.g., tutoring, gift, salary): ")
+        date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        expenses.append({"amount": amount, "category_id": "Income", "description": description, "date": date})
+        save_expenses(expenses)
+        balance += amount
+        save_balance(balance)
+
+        print(f"Funds added! New balance: ${balance:.2f}")
+
+        continue_using = input("Do you want to continue using the budget tracker? (yes/no): ").strip().lower()
+        if continue_using == "no":
+            print("Goodbye!")
+            exit()
+
+        return balance
+
+
+# View expenses
 def view_expenses(expenses, categories):
     """
     Display all recorded expenses.
 
+    This function iterates through the list of expenses and prints each expense
+    with its corresponding category, description, amount, and timestamp.
+
     Args:
-        expenses (list): The list of expenses.
+        expenses (list): The list of recorded expenses.
         categories (list): The list of available categories.
     """
     if not expenses:
@@ -171,20 +295,8 @@ def view_expenses(expenses, categories):
         return
 
     for idx, expense in enumerate(expenses, 1):
-        category_name = next((cat["name"] for cat in categories if cat["id"] == expense.get("category_id")), "Unknown")
-        print(f"{idx}. ${expense['amount']:.2f} - {category_name} ({expense['description']}) on {expense['date']}")
-
-
-# View total spending
-def view_total_spending(expenses):
-    """
-    Calculate and display total spending.
-
-    Args:
-        expenses (list): The list of expenses.
-    """
-    total = sum(expense["amount"] for expense in expenses)
-    print(f"Total spending: ${total:.2f}")
+        category = next((cat["name"] for cat in categories if cat["id"] == expense.get("category_id")), "Income")
+        print(f"{idx}. ${expense['amount']:.2f} - {category} ({expense['description']}) on {expense['date']}")
 
 
 # Filter expenses by category
@@ -211,91 +323,88 @@ def filter_expenses_by_category(expenses, categories):
             print(f"${exp['amount']:.2f} - {exp['description']} on {exp['date']}")
 
 
-# Delete an expense
-def delete_expense(expenses):
+# View total spending
+def view_total_spending(expenses):
     """
-    Delete an expense from the list.
+    Calculate and display the total spending.
+
+    This function sums all negative amounts in the expenses list (expenses are stored as negative values).
+    It then prints the total spending amount in absolute value format.
 
     Args:
-        expenses (list): The list of expenses.
+        expenses (list): The list of recorded expenses.
     """
-    view_expenses(expenses)
-    try:
-        index = int(input("Enter the number of the expense to delete: ")) - 1
-        if 0 <= index < len(expenses):
-            del expenses[index]
-            save_expenses(expenses)
-            print("Expense deleted successfully!")
-        else:
-            print("Invalid expense number.")
-    except ValueError:
-        print("Invalid input! Please enter a number.")
+    total_spent = sum(exp["amount"] for exp in expenses if exp["amount"] < 0)
+    print(f"Total spending: ${abs(total_spent):.2f}")
 
 
-# Edit an expense
-def edit_expense(expenses, categories):
+# View current balance
+def view_balance(balance):
     """
-    Edit an existing expense.
+    Display the current available balance.
 
     Args:
-        expenses (list): The list of expenses.
-        categories (list): The list of available categories.
+        balance (float): The user's current balance.
     """
-    view_expenses(expenses, categories)
-    try:
-        index = int(input("Enter the number of the expense to edit: ")) - 1
-        if 0 <= index < len(expenses):
-            amount = get_valid_amount("Enter new expense amount: ")
-            display_categories(categories)
-            category_id = get_valid_category_id(categories)
-            description = get_valid_string("Enter new description: ")
-            expenses[index] = {"amount": amount, "category_id": category_id, "description": description,
-                               "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-            save_expenses(expenses)
-            print("Expense updated successfully!")
-        else:
-            print("Invalid expense number.")
-    except ValueError:
-        print("Invalid input! Please enter a number.")
+    print(f"Current balance: ${balance:.2f}")
 
 
 # Main program loop
 def main():
     """
-    Main program loop for the Smart Expense Tracker.
+    Main program loop for the budget tracker.
+
+    This function initializes the budget tracker by loading or setting an initial balance.
+    It then enters a loop displaying the main menu, allowing the user to:
+    1. Add an expense
+    2. Add funds
+    3. View recorded expenses
+    4. Filter expenses by category
+    5. View total spending
+    6. View the current balance
+    7. Exit the program
+
+    The loop continues until the user selects the exit option, at which point
+    the balance and expenses files are cleared, restarting the budget tracker.
     """
-    expenses = load_expenses()
-    categories = load_categories()
-
     while True:
-        print("\nSmart Expense Tracker")
-        print("1. Add Expense")
-        print("2. View Expenses")
-        print("3. View Total Spending")
-        print("4. Filter Expenses by Category")
-        print("5. Delete an Expense")
-        print("6. Edit an Expense")
-        print("7. Exit")
+        balance = load_balance()
+        if balance == 0:
+            balance = set_initial_balance()
 
-        choice = input("Choose an option: ")
+        expenses = load_expenses()
+        categories = load_categories()
 
-        if choice == "1":
-            add_expense(expenses, categories)
-        elif choice == "2":
-            view_expenses(expenses, categories)
-        elif choice == "3":
-            view_total_spending(expenses)
-        elif choice == "4":
-            filter_expenses_by_category(expenses, categories)
-        elif choice == "5":
-            delete_expense(expenses)
-        elif choice == "6":
-            edit_expense(expenses, categories)
-        elif choice == "7":
-            print("Goodbye! See you soon!")
-            break
-        else:
-            print("Invalid choice, please try again.")
+        while True:
+            print("\nSmart Budget Tracker")
+            print("1. Add Expense")
+            print("2. Add Funds")
+            print("3. View Expenses")
+            print("4. Filter Expenses by Category")
+            print("5. View Total Spending")
+            print("6. View Current Balance")
+            print("7. Exit")
+
+            choice = input("Choose an option: ")
+            if choice == "1":
+                balance = add_expense(expenses, categories, balance)
+            elif choice == "2":
+                balance = add_funds(expenses, balance)
+            elif choice == "3":
+                view_expenses(expenses, categories)
+            elif choice == "4":
+                filter_expenses_by_category(expenses, categories)
+            elif choice == "5":
+                view_total_spending(expenses)
+            elif choice == "6":
+                view_balance(balance)
+            elif choice == "7":
+                print("Goodbye! Restarting the budget tracker...")
+                open(BALANCE_FILE, "w").close()  # Clear balance file
+                open(EXPENSE_FILE, "w").close()  # Clear expenses file
+                return
+            else:
+                print("Invalid choice, please try again.")
 
 
 # Entry point
